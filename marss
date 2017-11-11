@@ -1,0 +1,92 @@
+# time-space-models
+library(MARSS)
+library(mAr)
+#datos_2017<-read.table(file.choose(), header = FALSE, sep = ";",dec = ".")
+head(datos)
+plot(datos)
+
+
+## reemplazar datos vacios
+#datos[1,] <- na.fill(datos[1,],0)
+#datos[2,] <-na.fill(datos[2,],0)
+
+rcolcap_2017 <- datos[,1]
+rcolcap_2017
+rytm_mid_2017 <- datos[,2]
+rytm_mid_2017
+matriz2017<-cbind(rcolcap_2017,rytm_mid_2017)
+
+ar2017<-mAr.est(matriz2017,1)
+
+ets(rcolcap_2017)
+ets(rytm_mid_2017)
+
+xy <- data.frame(rcolcap_2017,rytm_mid_2017)
+xy
+plot(xy)
+as.numeric(unlist(rcolcap_2017))
+as.numeric(unlist(rytm_mid_2017))
+#Modelo general lineal
+reg_2017 <- lm(rcolcap_2017 ~ rytm_mid_2017, xy)
+reg_2017
+plot(reg_2017)
+reg_2017$coefficients
+acf(reg_2017$residuals) #de acuerdo a la funcion de autocorrelacion los residuales aun no son ruido blanco
+
+
+#Modelo general lineal con modelo gausiano para los errores
+mglin_egauss<-glm(rcolcap_2017~rytm_mid_2017, family=gaussian())
+mglin_egauss
+summary(mglin_egauss)
+acf(mglin_egauss$residuals)
+
+
+#modelos con MARSS
+datos2017 <- rbind(t(rcolcap_2017),t(rytm_mid_2017))
+datos2017
+datos2017_red <- datos2017[,1:50] #seleccionar menos muestras para hacer calculos rapidos
+
+#Estrcutura del modelo con 1 lag y pocos datos
+Z=matrix(list(1,0,0,1),2,2)
+A=matrix(0,2,1)
+R=matrix(c("r1",'r3','r3',"r4"),2,2)
+B=matrix(list("b1","b3","b3","b4"),2,2)
+Q=matrix(c("q1","q3","q3","q4"),2,2)
+model.gen=list(B=B,Q=Q,Z=Z,A=A,R=R,tinitx=0)
+Fit1_2017= MARSS(datos2017_red, model=model.gen,method="BFGS")
+Fit1_2017
+#parametros del modelo
+Fit1_2017$par 
+
+Fit1_2017$y.se[1,]
+Fit1_2017$y.se[2,]
+acf(Fit1_2017$y.se[1,]) #ruido blanco de los resuiduales de la primera relacion del modelo
+acf(Fit1_2017$y.se[2,]) #en esta prueba quedan datos por explica,r no se si sea por la causalidad
+# Fit1 = MARSS(datos2)
+
+#El valor de AIC sirve para comparar modelos estimados con funciones de verosilmilutd, entre mas pequeño mejor
+Fit1_2017$AIC
+mglin_egauss$aic
+
+
+#Estrcutura del modelo con todos los datos
+#El modelo aca falla, yo sugiero progarmar un modelos con mas lags.puede ser el de orden 11
+#que sugiere su analisis y miren que en le acf se ve que en 11 hay datos significativois
+
+
+Z=matrix(list(1,0,0,1),2,2)
+A=matrix(0,2,1)
+R=matrix(c("r1",'r3','r3',"r4"),2,2)
+B=matrix(list("b1","b3","b3","b4"),2,2)
+Q=matrix(c("q1","q3","q3","q4"),2,2)
+model.gen=list(B=B,Q=Q,Z=Z,A=A,R=R,tinitx=0)
+Fit2_2017= MARSS(datos2017, model=model.gen)
+#parametros del modelo
+Fit2_2017$par 
+acf(Fit2_2017$y.se[1,]) #ruido blanco de los resuiduales de la primera relacion del modelo
+acf(Fit2_2017$y.se[2,]) #en esta prueba quedan datos por explica,r no se si sea por la causalidad
+# Fit1 = MARSS(datos2)
+
+#El valor de AIC sirve para comparar modelos estimados con funciones de verosilmilutd, entre mas pequeño mejor
+Fit1_2017$AIC
+Fit2_2017$AIC
